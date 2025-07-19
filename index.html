@@ -64,35 +64,166 @@
         }
         
         .control-group {
-            margin-bottom: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border-radius: 12px;
+            border: 1px solid #e9ecef;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        
+        .control-group:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }
         
         .control-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
-            color: #333;
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            font-weight: 600;
+            font-size: 16px;
+            color: #2c3e50;
+            gap: 8px;
+        }
+        
+        .control-icon {
+            width: 20px;
+            height: 20px;
+            display: inline-block;
         }
         
         .slider-container {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 15px;
+            position: relative;
+        }
+        
+        .slider-wrapper {
+            flex: 1;
+            position: relative;
+            height: 40px;
+            display: flex;
+            align-items: center;
         }
         
         input[type="range"] {
-            flex: 1;
-            height: 5px;
-            border-radius: 3px;
-            background: #ddd;
+            width: 100%;
+            height: 8px;
+            border-radius: 20px;
+            background: linear-gradient(90deg, #e9ecef 0%, #dee2e6 100%);
             outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        input[type="range"]:hover {
+            transform: scaleY(1.2);
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:active {
+            transform: scale(1.1);
+            box-shadow: 0 2px 15px rgba(102, 126, 234, 0.6);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: 3px solid white;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        input[type="range"]::-moz-range-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        #pinholeSize {
+            background: linear-gradient(90deg, #ff6b6b 0%, #feca57 50%, #48dbfb 100%);
+        }
+        
+        #rayCount {
+            background: linear-gradient(90deg, #a8edea 0%, #fed6e3 100%);
         }
         
         .value-display {
-            min-width: 60px;
-            text-align: right;
-            font-weight: bold;
-            color: #666;
+            min-width: 80px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 18px;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            padding: 8px 12px;
+            border-radius: 20px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .value-display::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s ease;
+        }
+        
+        .value-display.updating::before {
+            left: 100%;
+        }
+        
+        .slider-effects {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 1px;
+            opacity: 0;
+            transform: translateY(-50%) scaleX(0);
+            transition: all 0.3s ease;
+        }
+        
+        .slider-wrapper:hover .slider-effects {
+            opacity: 1;
+            transform: translateY(-50%) scaleX(1);
         }
         
         .panel h3 {
@@ -112,6 +243,14 @@
         .physics-info h3 {
             margin-top: 0;
             color: #1976D2;
+        }
+        
+        .slider-description {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 8px;
+            text-align: center;
+            font-style: italic;
         }
     </style>
 </head>
@@ -138,19 +277,33 @@
         
         <div class="controls">
             <div class="control-group">
-                <label for="pinholeSize">Pinhole Size:</label>
+                <label for="pinholeSize">
+                    <span class="control-icon">⚫</span>
+                    Pinhole Size
+                </label>
                 <div class="slider-container">
-                    <input type="range" id="pinholeSize" min="1" max="20" value="3" step="0.5">
+                    <div class="slider-wrapper">
+                        <input type="range" id="pinholeSize" min="1" max="20" value="3" step="0.5">
+                        <div class="slider-effects"></div>
+                    </div>
                     <span class="value-display" id="pinholeSizeValue">3.0</span>
                 </div>
+                <div class="slider-description">Smaller = sharper but dimmer • Larger = brighter but blurrier</div>
             </div>
             
             <div class="control-group">
-                <label for="rayCount">Number of Rays:</label>
+                <label for="rayCount">
+                    <span class="control-icon">📡</span>
+                    Number of Rays
+                </label>
                 <div class="slider-container">
-                    <input type="range" id="rayCount" min="10" max="200" value="50" step="10">
+                    <div class="slider-wrapper">
+                        <input type="range" id="rayCount" min="10" max="200" value="50" step="10">
+                        <div class="slider-effects"></div>
+                    </div>
                     <span class="value-display" id="rayCountValue">50</span>
                 </div>
+                <div class="slider-description">More rays = clearer physics demonstration</div>
             </div>
         </div>
         

@@ -26,17 +26,72 @@ class PinholeCamera {
         const pinholeSizeValue = document.getElementById('pinholeSizeValue');
         const rayCountValue = document.getElementById('rayCountValue');
         
+        // Add smooth value update animation
+        const animateValueUpdate = (element, newValue, suffix = '') => {
+            element.classList.add('updating');
+            setTimeout(() => {
+                element.textContent = newValue + suffix;
+                element.classList.remove('updating');
+            }, 100);
+        };
+        
+        // Enhanced pinhole slider with visual feedback
         pinholeSlider.addEventListener('input', (e) => {
             this.pinholeSize = parseFloat(e.target.value);
-            pinholeSizeValue.textContent = this.pinholeSize.toFixed(1);
+            animateValueUpdate(pinholeSizeValue, this.pinholeSize.toFixed(1));
+            
+            // Update slider background based on value for visual feedback
+            const percentage = ((this.pinholeSize - 1) / (20 - 1)) * 100;
+            pinholeSlider.style.background = `linear-gradient(90deg, 
+                #ff6b6b 0%, 
+                #feca57 ${percentage}%, 
+                #48dbfb 100%)`;
+            
             this.render();
         });
         
+        // Enhanced ray slider with visual feedback
         raySlider.addEventListener('input', (e) => {
             this.rayCount = parseInt(e.target.value);
-            rayCountValue.textContent = this.rayCount;
+            animateValueUpdate(rayCountValue, this.rayCount);
+            
+            // Update slider background based on value
+            const percentage = ((this.rayCount - 10) / (200 - 10)) * 100;
+            raySlider.style.background = `linear-gradient(90deg, 
+                #a8edea 0%, 
+                #fed6e3 ${percentage}%, 
+                #d299c2 100%)`;
+            
             this.render();
         });
+        
+        // Add hover effects and haptic feedback simulation
+        [pinholeSlider, raySlider].forEach(slider => {
+            slider.addEventListener('mousedown', () => {
+                slider.style.transform = 'scaleY(1.1)';
+            });
+            
+            slider.addEventListener('mouseup', () => {
+                slider.style.transform = 'scaleY(1)';
+            });
+            
+            slider.addEventListener('mouseleave', () => {
+                slider.style.transform = 'scaleY(1)';
+            });
+        });
+        
+        // Initialize slider backgrounds
+        const pinholePercentage = ((this.pinholeSize - 1) / (20 - 1)) * 100;
+        pinholeSlider.style.background = `linear-gradient(90deg, 
+            #ff6b6b 0%, 
+            #feca57 ${pinholePercentage}%, 
+            #48dbfb 100%)`;
+            
+        const rayPercentage = ((this.rayCount - 10) / (200 - 10)) * 100;
+        raySlider.style.background = `linear-gradient(90deg, 
+            #a8edea 0%, 
+            #fed6e3 ${rayPercentage}%, 
+            #d299c2 100%)`;
     }
     
     loadSourceImage() {
