@@ -382,16 +382,17 @@ class PinholeCamera {
                 const middleX = pinholeX + angleOffset * 20;
                 const middleY = pinholeY + (Math.random() - 0.5) * this.pinholeSize;
                 
-                // Calculate direction and extend to projection
-                const direction = {
-                    x: middleX - startX,
-                    y: middleY - startY
-                };
+                // Calculate where ray intersects projection screen
+                const projectionScreenX = projectionX + projectionCanvas.width;
                 
-                const distance = (projectionX + projectionCanvas.width / 2) - middleX;
-                const slope = direction.y / direction.x;
-                const endX = middleX + distance;
-                const endY = middleY + slope * distance;
+                // Ray equation: point = start + t * (middle - start)
+                // When ray hits projection screen at x = projectionScreenX:
+                // projectionScreenX = startX + t * (middleX - startX)
+                const t = (projectionScreenX - startX) / (middleX - startX);
+                
+                // Calculate y intersection point
+                const endX = projectionScreenX;
+                const endY = startY + t * (middleY - startY);
                 
                 // Draw cone ray with sampled color
                 ctx.strokeStyle = color;
