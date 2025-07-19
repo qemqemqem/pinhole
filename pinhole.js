@@ -104,11 +104,12 @@ class PinholeCamera {
     }
     
     loadSourceImage() {
-        // Try multiple Van Gogh sources with fallback
+        // Try colorful image first, then fallbacks
         const sources = [
+            'https://cdn-thumbs.ohmyprints.net/1/10d6d5dd7cc9197edcbe28e9c9fbeba6/817x600/thumbnail/fit.jpg',
             'https://upload.wikimedia.org/wikipedia/commons/b/b2/Vincent_van_Gogh_-_Self-Portrait_-_Google_Art_Project.jpg',
             'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400',
-            'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="%23f0e68c"/><circle cx="150" cy="120" r="40" fill="%23daa520"/><circle cx="130" cy="110" r="5" fill="%23000"/><circle cx="170" cy="110" r="5" fill="%23000"/><path d="M140 140 Q150 150 160 140" stroke="%23000" stroke-width="2" fill="none"/><text x="150" y="200" text-anchor="middle" font-family="serif" font-size="16" fill="%238b4513">Van Gogh Portrait</text></svg>'
+            'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="%23f0e68c"/><circle cx="150" cy="120" r="40" fill="%23daa520"/><circle cx="130" cy="110" r="5" fill="%23000"/><circle cx="170" cy="110" r="5" fill="%23000"/><path d="M140 140 Q150 150 160 140" stroke="%23000" stroke-width="2" fill="none"/><text x="150" y="200" text-anchor="middle" font-family="serif" font-size="16" fill="%238b4513">Colorful Portrait</text></svg>'
         ];
         
         this.tryLoadImage(sources, 0);
@@ -160,7 +161,7 @@ class PinholeCamera {
         ctx.fillStyle = '#8b4513';
         ctx.font = '16px serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Van Gogh Portrait', 150, 200);
+        ctx.fillText('Colorful Portrait', 150, 200);
         
         this.sourceImage.src = canvas.toDataURL();
     }
