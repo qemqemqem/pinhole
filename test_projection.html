@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinhole Camera Projection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .pass {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .fail {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .test-summary {
+            font-weight: bold;
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pinhole Camera Projection Tests</h1>
+    <p>Testing the mathematical accuracy of ray projection calculations.</p>
+    
+    <div id="test-results"></div>
+
+    <script>
+        function calculateProjection(startX, startY, pinholeX, pinholeY, projectionPlaneX) {
+            // Same calculation as in pinhole.js
+            const t = (projectionPlaneX - startX) / (pinholeX - startX);
+            const endX = projectionPlaneX;
+            const endY = startY + t * (pinholeY - startY);
+            return { endX, endY };
+        }
+
+        function runTests() {
+            const results = [];
+            
+            // Test setup: coordinate system
+            const sourceLeft = 100;
+            const sourceRight = 400;
+            const sourceTop = 100;
+            const sourceBottom = 400;
+            const sourceCenterX = (sourceLeft + sourceRight) / 2;
+            const sourceCenterY = (sourceTop + sourceBottom) / 2;
+            
+            const pinholeX = 500;
+            const pinholeY = 250;
+            
+            const projectionPlaneX = 700;
+            
+            // Test 1: Center point should project to center
+            const centerProjection = calculateProjection(sourceCenterX, sourceCenterY, pinholeX, pinholeY, projectionPlaneX);
+            const centerTest = Math.abs(centerProjection.endY - pinholeY) < 0.1;
+            results.push({
+                name: "Center Point Projection",
+                passed: centerTest,
+                description: `Center source point should project near pinhole Y position`,
+                expected: `endY ≈ ${pinholeY}`,
+                actual: `endY = ${centerProjection.endY.toFixed(2)}`,
+                details: `Source(${sourceCenterX}, ${sourceCenterY}) → Projection(${centerProjection.endX}, ${centerProjection.endY.toFixed(2)})`
+            });
+
+            // Test 2: Left source point should have endY > pinholeY (inverts to bottom)
+            const leftTop = calculateProjection(sourceLeft, sourceTop, pinholeX, pinholeY, projectionPlaneX);
+            const leftBottomTest = leftTop.endY > pinholeY;
+            results.push({
+                name: "Horizontal Inversion Test",
+                passed: leftBottomTest,
+                description: `Left-top source point should project below pinhole (inversion)`,
+                expected: `endY > ${pinholeY}`,
+                actual: `endY = ${leftTop.endY.toFixed(2)}`,
+                details: `Source(${sourceLeft}, ${sourceTop}) → Projection(${leftTop.endX}, ${leftTop.endY.toFixed(2)})`
+            });
+
+            // Test 3: Right source point should have endY < pinholeY (inverts to top)
+            const rightBottom = calculateProjection(sourceRight, sourceBottom, pinholeX, pinholeY, projectionPlaneX);
+            const rightTopTest = rightBottom.endY < pinholeY;
+            results.push({
+                name: "Vertical Inversion Test",
+                passed: rightTopTest,
+                description: `Right-bottom source point should project above pinhole (inversion)`,
+                expected: `endY < ${pinholeY}`,
+                actual: `endY = ${rightBottom.endY.toFixed(2)}`,
+                details: `Source(${sourceRight}, ${sourceBottom}) → Projection(${rightBottom.endX}, ${rightBottom.endY.toFixed(2)})`
+            });
+
+            // Test 4: All projections should be on the projection plane
+            const testPoints = [
+                [sourceLeft, sourceTop],
+                [sourceRight, sourceTop],
+                [sourceLeft, sourceBottom],
+                [sourceRight, sourceBottom]
+            ];
+            
+            let allOnPlane = true;
+            testPoints.forEach(([x, y]) => {
+                const proj = calculateProjection(x, y, pinholeX, pinholeY, projectionPlaneX);
+                if (Math.abs(proj.endX - projectionPlaneX) > 0.01) {
+                    allOnPlane = false;
+                }
+            });
+            
+            results.push({
+                name: "Projection Plane Consistency",
+                passed: allOnPlane,
+                description: `All rays should intersect exactly at the projection plane`,
+                expected: `All endX = ${projectionPlaneX}`,
+                actual: allOnPlane ? "All correct" : "Some rays miss plane",
+                details: `Tested ${testPoints.length} corner points`
+            });
+
+            // Test 5: Proportional scaling test
+            const topLeft = calculateProjection(sourceLeft, sourceTop, pinholeX, pinholeY, projectionPlaneX);
+            const topRight = calculateProjection(sourceRight, sourceTop, pinholeX, pinholeY, projectionPlaneX);
+            const bottomLeft = calculateProjection(sourceLeft, sourceBottom, pinholeX, pinholeY, projectionPlaneX);
+            
+            // In a pinhole camera, relative distances should be preserved (but inverted)
+            const sourceWidth = sourceRight - sourceLeft;
+            const sourceHeight = sourceBottom - sourceTop;
+            const projectionHeight = Math.abs(topLeft.endY - bottomLeft.endY);
+            const projectionWidth = Math.abs(topLeft.endY - topRight.endY);
+            
+            // The aspect ratio should be approximately maintained
+            const sourceAspect = sourceWidth / sourceHeight;
+            const projectionAspect = projectionWidth / projectionHeight;
+            const aspectRatioTest = Math.abs(sourceAspect - projectionAspect) < 0.1;
+            
+            results.push({
+                name: "Aspect Ratio Preservation",
+                passed: aspectRatioTest,
+                description: `Image aspect ratio should be approximately preserved`,
+                expected: `Aspect ratio ≈ ${sourceAspect.toFixed(2)}`,
+                actual: `Aspect ratio = ${projectionAspect.toFixed(2)}`,
+                details: `Source: ${sourceWidth}×${sourceHeight}, Projection: ${projectionWidth.toFixed(1)}×${projectionHeight.toFixed(1)}`
+            });
+
+            return results;
+        }
+
+        function displayResults(results) {
+            const container = document.getElementById('test-results');
+            let html = '';
+            let passed = 0;
+
+            results.forEach(result => {
+                if (result.passed) passed++;
+                html += `
+                    <div class="test-result ${result.passed ? 'pass' : 'fail'}">
+                        <strong>${result.passed ? '✓' : '✗'} ${result.name}</strong><br>
+                        ${result.description}<br>
+                        <strong>Expected:</strong> ${result.expected}<br>
+                        <strong>Actual:</strong> ${result.actual}<br>
+                        <em>${result.details}</em>
+                    </div>
+                `;
+            });
+
+            const summaryClass = passed === results.length ? 'pass' : 'fail';
+            html += `
+                <div class="test-summary ${summaryClass}">
+                    Test Summary: ${passed}/${results.length} tests passed
+                    ${passed === results.length ? '🎉 All tests passed!' : '⚠️ Some tests failed - check projection calculations'}
+                </div>
+            `;
+
+            container.innerHTML = html;
+        }
+
+        // Run tests when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const results = runTests();
+            displayResults(results);
+        });
+    </script>
+</body>
+</html>
