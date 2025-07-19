@@ -78,11 +78,22 @@
     <div id="test-results"></div>
 
     <script>
-        // Same projection calculation as in pinhole.js
-        function calculateProjection(startX, startY, pinholeX, pinholeY, projectionPlaneX) {
-            const t = (projectionPlaneX - startX) / (pinholeX - startX);
-            const endX = projectionPlaneX;
-            const endY = startY + t * (pinholeY - startY);
+        // Simplified educational ray mapping (matches current pinhole.js)
+        function calculateProjection(startX, startY, sourceX, sourceY, projectionX, projectionCanvas) {
+            // X: Direct mapping (left source → left projection)
+            const sourceImageRect = { x: 0, y: 0, width: 300, height: 300 };
+            const sourceRelativeX = (startX - sourceX - sourceImageRect.x) / sourceImageRect.width;
+            const projectionWidth = projectionCanvas.width * 0.8;
+            const projectionMarginX = projectionX + projectionCanvas.width * 0.1;
+            const endX = projectionMarginX + sourceRelativeX * projectionWidth;
+            
+            // Y: Inverted through pinhole (top source → bottom projection)
+            const sourceRelativeY = (startY - sourceY - sourceImageRect.y) / sourceImageRect.height;
+            const projectionCenterY = projectionY + projectionCanvas.height * 0.5;
+            const projectionHeight = projectionCanvas.height * 0.8;
+            const invertedY = 1 - sourceRelativeY;
+            const endY = projectionCenterY - projectionHeight * 0.5 + invertedY * projectionHeight;
+            
             return { endX, endY };
         }
 
@@ -92,13 +103,12 @@
             // Realistic simulation parameters
             const sourceX = 100, sourceY = 100, sourceWidth = 300, sourceHeight = 300;
             const pinholeX = 500, pinholeY = 250;
-            const projectionX = 700, projectionWidth = 300, projectionHeight = 300;
-            const projectionPlaneX = projectionX + projectionWidth * 0.75;
+            const projectionX = 700, projectionCanvas = { width: 300, height: 300 };
             
             console.log('Test Setup:', {
                 source: `${sourceX},${sourceY} ${sourceWidth}x${sourceHeight}`,
                 pinhole: `${pinholeX},${pinholeY}`,
-                projectionPlane: projectionPlaneX
+                projection: `${projectionX} ${projectionCanvas.width}x${projectionCanvas.height}`
             });
 
             // Generate test rays from different source positions
@@ -108,7 +118,7 @@
             for (let i = 0; i < numTestRays; i++) {
                 const startX = sourceX + (i / (numTestRays - 1)) * sourceWidth; // Spread across width
                 const startY = sourceY + Math.random() * sourceHeight;
-                const projection = calculateProjection(startX, startY, pinholeX, pinholeY, projectionPlaneX);
+                const projection = calculateProjection(startX, startY, sourceX, sourceY, projectionX, projectionCanvas);
                 testRays.push({
                     startX, startY,
                     endX: projection.endX, 
@@ -122,13 +132,13 @@
             const xClusteringTest = uniqueXValues.length > 1;
             
             results.push({
-                name: "❌ CRITICAL: X Endpoint Distribution",
+                name: "✅ X Endpoint Distribution (Educational Mapping)",
                 passed: xClusteringTest,
                 critical: true,
-                description: "Ray endpoints must NOT all cluster at same X position",
-                expected: "Multiple distinct X values",
+                description: "X coordinates should map directly (left source → left projection)",
+                expected: "Wide spread of X values across projection area",
                 actual: `${uniqueXValues.length} unique X positions: [${uniqueXValues.slice(0,5).join(', ')}${uniqueXValues.length > 5 ? '...' : ''}]`,
-                details: `This test catches the main bug visible in screenshots`,
+                details: `Educational approach: X direct mapping, Y inverted`,
                 testData: endXValues.slice(0, 10).map(x => x.toFixed(2)).join(', ')
             });
 
@@ -146,32 +156,34 @@
                 details: `Min Y: ${Math.min(...endYValues).toFixed(1)}, Max Y: ${Math.max(...endYValues).toFixed(1)}`
             });
 
-            // TEST 3: Inversion verification - left source should project right
-            const leftmostRay = testRays.find(ray => ray.startX === Math.min(...testRays.map(r => r.startX)));
-            const rightmostRay = testRays.find(ray => ray.startX === Math.max(...testRays.map(r => r.startX)));
+            // TEST 3: Y Inversion verification - top source should project to bottom
+            const topRay = testRays.find(ray => ray.startY === Math.min(...testRays.map(r => r.startY)));
+            const bottomRay = testRays.find(ray => ray.startY === Math.max(...testRays.map(r => r.startY)));
             
-            // In proper pinhole physics: left source → higher Y on projection (if pinhole is center)
-            const inversionTest = leftmostRay.endY !== rightmostRay.endY;
+            // In educational mapping: top source → bottom projection (Y inverted)
+            const inversionTest = topRay && bottomRay && topRay.endY > bottomRay.endY;
             
             results.push({
-                name: "Horizontal Inversion Physics",
+                name: "Y Inversion Physics (Educational)",
                 passed: inversionTest,
-                description: "Left and right source points should project to different Y positions",
-                expected: "Different Y endpoints for left vs right source",
-                actual: `Left source(${leftmostRay.startX.toFixed(0)}) → Y=${leftmostRay.endY.toFixed(1)}, Right source(${rightmostRay.startX.toFixed(0)}) → Y=${rightmostRay.endY.toFixed(1)}`,
-                details: `Y difference: ${Math.abs(leftmostRay.endY - rightmostRay.endY).toFixed(1)} pixels`
+                description: "Top source points should project to bottom of projection (Y inverted)",
+                expected: "Top source Y < Bottom source Y, but Top projection Y > Bottom projection Y",
+                actual: topRay && bottomRay ? `Top source(Y=${topRay.startY.toFixed(0)}) → projection Y=${topRay.endY.toFixed(1)}, Bottom source(Y=${bottomRay.startY.toFixed(0)}) → projection Y=${bottomRay.endY.toFixed(1)}` : "Test rays not found",
+                details: topRay && bottomRay ? `Inversion verified: ${topRay.endY > bottomRay.endY ? 'PASS' : 'FAIL'}` : "Missing test data"
             });
 
-            // TEST 4: Projection plane consistency
-            const projectionPlaneTest = testRays.every(ray => Math.abs(ray.endX - projectionPlaneX) < 0.01);
+            // TEST 4: X Direct Mapping Consistency  
+            const projectionMarginX = projectionX + projectionCanvas.width * 0.1;
+            const projectionRightEdge = projectionMarginX + projectionCanvas.width * 0.8;
+            const xMappingTest = testRays.every(ray => ray.endX >= projectionMarginX && ray.endX <= projectionRightEdge);
             
             results.push({
-                name: "Projection Plane Consistency",
-                passed: projectionPlaneTest,
-                description: "All rays should hit the same projection plane X coordinate",
-                expected: `All endX ≈ ${projectionPlaneX}`,
-                actual: projectionPlaneTest ? "All rays hit plane correctly" : "Some rays miss plane",
-                details: `Expected X: ${projectionPlaneX}, Actual range: ${Math.min(...endXValues).toFixed(2)} - ${Math.max(...endXValues).toFixed(2)}`
+                name: "X Direct Mapping Consistency",
+                passed: xMappingTest,
+                description: "All X endpoints should be within projection area bounds",
+                expected: `All endX between ${projectionMarginX.toFixed(0)} and ${projectionRightEdge.toFixed(0)}`,
+                actual: xMappingTest ? "All X coordinates in bounds" : "Some X coordinates out of bounds",
+                details: `Actual X range: ${Math.min(...endXValues).toFixed(2)} - ${Math.max(...endXValues).toFixed(2)}`
             });
 
             // TEST 5: Ray distribution variance

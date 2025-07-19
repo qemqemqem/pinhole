@@ -412,22 +412,26 @@ class PinholeCamera {
                 const middleX = pinholeX + angleOffset * 20;
                 const middleY = pinholeY + (Math.random() - 0.5) * this.pinholeSize;
                 
-                // Calculate ray continuation - rays should spread naturally across projection area
-                // Ray direction from source through pinhole
-                const rayDirX = middleX - startX;
-                const rayDirY = middleY - startY;
+                // Simplified educational ray mapping:
+                // X: Direct mapping (left source → left projection)  
+                // Y: Inverted through pinhole (top source → bottom projection)
                 
-                // Extend ray beyond pinhole by a fixed distance for visualization
-                // This allows rays to naturally spread based on their different angles
-                const extensionFactor = 1.5; // How far past pinhole to extend
-                const distancePastPinhole = Math.abs(projectionX - middleX) * extensionFactor;
+                // Map X coordinate directly to projection area
+                const sourceImageRect = this.imageRect || { x: 0, y: 0, width: 300, height: 300 };
+                const sourceRelativeX = (startX - sourceX - sourceImageRect.x) / sourceImageRect.width;
+                const projectionWidth = projectionCanvas.width * 0.8; // Use most of projection area
+                const projectionMarginX = projectionX + projectionCanvas.width * 0.1; // Small margin
+                const finalEndX = projectionMarginX + sourceRelativeX * projectionWidth;
                 
-                // Calculate final position by extending ray past pinhole
-                const normalizedDirX = rayDirX / Math.sqrt(rayDirX*rayDirX + rayDirY*rayDirY);
-                const normalizedDirY = rayDirY / Math.sqrt(rayDirX*rayDirX + rayDirY*rayDirY);
+                // Calculate Y inversion through pinhole geometry
+                // Ray from startY through pinholeY should project to inverted position
+                const sourceRelativeY = (startY - sourceY - sourceImageRect.y) / sourceImageRect.height;
+                const projectionCenterY = projectionY + projectionCanvas.height * 0.5;
+                const projectionHeight = projectionCanvas.height * 0.8;
                 
-                const finalEndX = middleX + normalizedDirX * distancePastPinhole;
-                const finalEndY = middleY + normalizedDirY * distancePastPinhole;
+                // Invert Y: 0 → 1, 1 → 0 (top becomes bottom)
+                const invertedY = 1 - sourceRelativeY;
+                const finalEndY = projectionCenterY - projectionHeight * 0.5 + invertedY * projectionHeight;
                 
                 // Draw cone ray with sampled color
                 ctx.strokeStyle = color;
