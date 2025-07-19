@@ -159,41 +159,58 @@ class PinholeCamera {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const apertureHeight = this.pinholeSize;
+        const wallThickness = 20; // Much thinner wall!
+        const wallLeft = centerX - wallThickness / 2;
+        const wallRight = centerX + wallThickness / 2;
         
-        // Draw the camera body/barrier with gradient
-        const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-        gradient.addColorStop(0, '#222');
-        gradient.addColorStop(0.5, '#444');
-        gradient.addColorStop(1, '#222');
+        // Draw the thin camera barrier/wall with gradient
+        const gradient = ctx.createLinearGradient(wallLeft, 0, wallRight, 0);
+        gradient.addColorStop(0, '#111');
+        gradient.addColorStop(0.5, '#333');
+        gradient.addColorStop(1, '#111');
         
         ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, centerY - apertureHeight / 2);
-        ctx.fillRect(0, centerY + apertureHeight / 2, canvas.width, centerY - apertureHeight / 2);
+        // Top part of wall
+        ctx.fillRect(wallLeft, 0, wallThickness, centerY - apertureHeight / 2);
+        // Bottom part of wall
+        ctx.fillRect(wallLeft, centerY + apertureHeight / 2, wallThickness, canvas.height - (centerY + apertureHeight / 2));
         
-        // Draw metallic edge details
-        ctx.strokeStyle = '#666';
+        // Draw metallic edge details on the thin wall
+        ctx.strokeStyle = '#555';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(0, centerY - apertureHeight / 2);
-        ctx.lineTo(canvas.width, centerY - apertureHeight / 2);
-        ctx.moveTo(0, centerY + apertureHeight / 2);
-        ctx.lineTo(canvas.width, centerY + apertureHeight / 2);
+        // Left edge
+        ctx.moveTo(wallLeft, 0);
+        ctx.lineTo(wallLeft, canvas.height);
+        // Right edge
+        ctx.moveTo(wallRight, 0);
+        ctx.lineTo(wallRight, canvas.height);
+        // Aperture edges
+        ctx.moveTo(wallLeft, centerY - apertureHeight / 2);
+        ctx.lineTo(wallRight, centerY - apertureHeight / 2);
+        ctx.moveTo(wallLeft, centerY + apertureHeight / 2);
+        ctx.lineTo(wallRight, centerY + apertureHeight / 2);
         ctx.stroke();
         
-        // Draw the bright pinhole opening with inner glow
+        // Draw the bright pinhole opening
         const openingGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, apertureHeight);
         openingGradient.addColorStop(0, '#fff');
-        openingGradient.addColorStop(0.7, '#f0f0f0');
-        openingGradient.addColorStop(1, '#ddd');
+        openingGradient.addColorStop(0.7, '#f8f8f8');
+        openingGradient.addColorStop(1, '#e0e0e0');
         
         ctx.fillStyle = openingGradient;
-        ctx.fillRect(0, centerY - apertureHeight / 2, canvas.width, apertureHeight);
+        ctx.fillRect(wallLeft, centerY - apertureHeight / 2, wallThickness, apertureHeight);
         
         // Add aperture size indicator
-        ctx.fillStyle = '#999';
+        ctx.fillStyle = '#666';
         ctx.font = '10px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText(`Ø ${this.pinholeSize.toFixed(1)}`, centerX, centerY + apertureHeight + 15);
+        ctx.fillText(`Ø ${this.pinholeSize.toFixed(1)}`, centerX, centerY + apertureHeight + 20);
+        
+        // Add "PINHOLE" label
+        ctx.fillStyle = '#999';
+        ctx.font = '8px Arial';
+        ctx.fillText('PINHOLE', centerX, centerY - apertureHeight - 10);
     }
     
     renderProjection() {
