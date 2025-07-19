@@ -17,6 +17,9 @@ class PinholeCamera {
         this.imageData = null; // Store image data for color sampling
         this.showProjectionImage = false; // Start with projection image hidden
         
+        // Quasirandom point generation
+        this.haltonIndex = 0;
+        
         this.setupControls();
         this.loadSourceImage();
     }
@@ -48,6 +51,8 @@ class PinholeCamera {
         raySlider.addEventListener('input', (e) => {
             this.rayCount = parseInt(e.target.value);
             animateValueUpdate(rayCountValue, this.rayCount);
+            // Offset quasirandom sequence for variety when ray count changes
+            this.haltonIndex = (this.haltonIndex + 7) % 1000;
             this.render();
         });
         
@@ -75,6 +80,27 @@ class PinholeCamera {
         // Initialize clean slider styling
         pinholeSlider.style.background = '#dee2e6';
         raySlider.style.background = '#dee2e6';
+    }
+    
+    // Halton sequence for quasirandom point generation
+    halton(index, base) {
+        let result = 0;
+        let f = 1;
+        let i = index;
+        while (i > 0) {
+            f = f / base;
+            result = result + f * (i % base);
+            i = Math.floor(i / base);
+        }
+        return result;
+    }
+    
+    // Generate quasirandom 2D point using Halton sequence
+    getQuasirandomPoint(index) {
+        return {
+            x: this.halton(index, 2),  // Base 2 for X
+            y: this.halton(index, 3)   // Base 3 for Y
+        };
     }
     
     loadSourceImage() {
@@ -202,7 +228,7 @@ class PinholeCamera {
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
         const apertureHeight = this.pinholeSize;
-        const wallThickness = 20; // Much thinner wall!
+        const wallThickness = 12; // Even thinner wall!
         const wallLeft = centerX - wallThickness / 2;
         const wallRight = centerX + wallThickness / 2;
         
@@ -250,10 +276,25 @@ class PinholeCamera {
         ctx.textAlign = 'center';
         ctx.fillText(`Ø ${this.pinholeSize.toFixed(1)}`, centerX, centerY + apertureHeight + 20);
         
+        // Add horizontal bars to clearly show pinhole edges
+        const barThickness = 3;
+        const barLength = 40;
+        ctx.fillStyle = '#333';
+        
+        // Top edge bar
+        ctx.fillRect(centerX - barLength/2, centerY - apertureHeight/2 - barThickness, barLength, barThickness);
+        // Bottom edge bar  
+        ctx.fillRect(centerX - barLength/2, centerY + apertureHeight/2, barLength, barThickness);
+        
+        // Add edge highlights for 3D effect
+        ctx.fillStyle = '#666';
+        ctx.fillRect(centerX - barLength/2, centerY - apertureHeight/2 - barThickness, barLength, 1);
+        ctx.fillRect(centerX - barLength/2, centerY + apertureHeight/2 + barThickness - 1, barLength, 1);
+        
         // Add "PINHOLE" label
         ctx.fillStyle = '#999';
         ctx.font = '8px Arial';
-        ctx.fillText('PINHOLE', centerX, centerY - apertureHeight - 10);
+        ctx.fillText('PINHOLE', centerX, centerY - apertureHeight - 15);
     }
     
     renderProjection() {
@@ -403,11 +444,12 @@ class PinholeCamera {
         const projectionX = projectionRect.left - containerRect.left;
         const projectionY = projectionRect.top - containerRect.top;
         
-        // Draw light cones with colors sampled from the image
+        // Draw light cones with colors sampled from the image using quasirandom points
         for (let i = 0; i < this.rayCount; i++) {
-            // Random point on source image
-            const startX = sourceX + this.imageRect.x + Math.random() * this.imageRect.width;
-            const startY = sourceY + this.imageRect.y + Math.random() * this.imageRect.height;
+            // Use quasirandom point for better coverage
+            const quasiPoint = this.getQuasirandomPoint(i + this.haltonIndex);
+            const startX = sourceX + this.imageRect.x + quasiPoint.x * this.imageRect.width;
+            const startY = sourceY + this.imageRect.y + quasiPoint.y * this.imageRect.height;
             
             // Sample color from the image at this point
             const color = this.getPixelColor(startX - sourceX, startY - sourceY);
@@ -421,7 +463,9 @@ class PinholeCamera {
                 
                 // Through pinhole with cone spread
                 const middleX = pinholeX + angleOffset * 20;
-                const middleY = pinholeY + (Math.random() - 0.5) * this.pinholeSize;
+                // Use quasirandom for pinhole Y variation too
+                const pinholeVariation = this.halton((i * numConeRays + j + this.haltonIndex) % 997, 5);
+                const middleY = pinholeY + (pinholeVariation - 0.5) * this.pinholeSize;
                 
                 // Simplified educational ray mapping:
                 // X: Direct mapping (left source → left projection)  
