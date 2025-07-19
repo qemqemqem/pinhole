@@ -15,6 +15,7 @@ class PinholeCamera {
         this.pinholeSize = 3;
         this.rayCount = 50;
         this.imageData = null; // Store image data for color sampling
+        this.showProjectionImage = false; // Start with projection image hidden
         
         this.setupControls();
         this.loadSourceImage();
@@ -25,6 +26,7 @@ class PinholeCamera {
         const raySlider = document.getElementById('rayCount');
         const pinholeSizeValue = document.getElementById('pinholeSizeValue');
         const rayCountValue = document.getElementById('rayCountValue');
+        const showProjectionCheckbox = document.getElementById('showProjectionImage');
         
         // Add smooth value update animation
         const animateValueUpdate = (element, newValue, suffix = '') => {
@@ -46,6 +48,12 @@ class PinholeCamera {
         raySlider.addEventListener('input', (e) => {
             this.rayCount = parseInt(e.target.value);
             animateValueUpdate(rayCountValue, this.rayCount);
+            this.render();
+        });
+        
+        // Projection image toggle
+        showProjectionCheckbox.addEventListener('change', (e) => {
+            this.showProjectionImage = e.target.checked;
             this.render();
         });
         
@@ -255,39 +263,42 @@ class PinholeCamera {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         if (this.sourceImage.complete && this.sourceImage.width > 0) {
-            // Draw the inverted image
             const scale = Math.min(canvas.width / this.sourceImage.width, canvas.height / this.sourceImage.height) * 0.8;
             const width = this.sourceImage.width * scale;
             const height = this.sourceImage.height * scale;
             const x = (canvas.width - width) / 2;
             const y = (canvas.height - height) / 2;
             
-            // Add a subtle background to show the projection screen
+            // Always show the projection screen background
             ctx.fillStyle = '#f8f8f8';
             ctx.fillRect(x - 10, y - 10, width + 20, height + 20);
             ctx.strokeStyle = '#ddd';
             ctx.strokeRect(x - 10, y - 10, width + 20, height + 20);
             
-            ctx.save();
-            ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.scale(-1, -1); // Flip both horizontally and vertically
-            
-            // Apply slight blur based on pinhole size
-            if (this.pinholeSize > 5) {
-                ctx.filter = `blur(${(this.pinholeSize - 5) * 0.5}px)`;
+            // Only draw the background image if checkbox is checked
+            if (this.showProjectionImage) {
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.scale(-1, -1); // Flip both horizontally and vertically
+                
+                // Apply slight blur based on pinhole size
+                if (this.pinholeSize > 5) {
+                    ctx.filter = `blur(${(this.pinholeSize - 5) * 0.5}px)`;
+                }
+                
+                ctx.drawImage(this.sourceImage, -width/2, -height/2, width, height);
+                ctx.restore();
+                
+                // Add blur circles based on pinhole size
+                this.renderBlurCircles(canvas, ctx, x, y, width, height);
             }
-            
-            ctx.drawImage(this.sourceImage, -width/2, -height/2, width, height);
-            ctx.restore();
-            
-            // Add blur circles based on pinhole size
-            this.renderBlurCircles(canvas, ctx, x, y, width, height);
             
             // Add label
             ctx.fillStyle = '#666';
             ctx.font = '12px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('Inverted & Flipped', canvas.width / 2, y + height + 30);
+            const labelText = this.showProjectionImage ? 'Inverted & Flipped' : 'Ray Endpoints Form Image';
+            ctx.fillText(labelText, canvas.width / 2, y + height + 30);
         } else {
             ctx.fillStyle = '#666';
             ctx.font = '16px Arial';
@@ -433,9 +444,12 @@ class PinholeCamera {
                 const invertedY = 1 - sourceRelativeY;
                 const finalEndY = projectionCenterY - projectionHeight * 0.5 + invertedY * projectionHeight;
                 
-                // Draw cone ray with sampled color
-                ctx.strokeStyle = color;
-                ctx.lineWidth = j === Math.floor(numConeRays/2) ? 2 : 1;
+                // Draw subtle ray lines (mostly transparent)
+                const rayColor = color.replace(/rgba?\([^)]+\)/, match => {
+                    return match.replace(/[\d\.]+\)$/, '0.15)'); // Make rays very transparent
+                });
+                ctx.strokeStyle = rayColor;
+                ctx.lineWidth = j === Math.floor(numConeRays/2) ? 1.5 : 0.8;
                 
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
@@ -443,10 +457,11 @@ class PinholeCamera {
                 ctx.lineTo(finalEndX, finalEndY);
                 ctx.stroke();
                 
-                // Draw projection circle (2D, not 1D line)
+                // Draw projection circle (opaque to show image formation)
                 if (j === Math.floor(numConeRays/2)) { // Only for center ray
-                    const circleRadius = this.pinholeSize * 2;
-                    ctx.fillStyle = color.replace(/[\d\.]+\)$/g, '0.3)');
+                    const circleRadius = Math.max(2, this.pinholeSize * 1.5);
+                    // Keep the original color opacity for circles to show image formation
+                    ctx.fillStyle = color.replace(/[\d\.]+\)$/g, '0.8)');
                     ctx.beginPath();
                     ctx.arc(finalEndX, finalEndY, circleRadius, 0, Math.PI * 2);
                     ctx.fill();

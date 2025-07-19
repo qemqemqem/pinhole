@@ -249,6 +249,26 @@
             text-align: center;
             font-style: italic;
         }
+        
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 10px;
+        }
+        
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: #007bff;
+        }
+        
+        .checkbox-description {
+            font-size: 14px;
+            color: #6c757d;
+            flex: 1;
+        }
     </style>
 </head>
 <body>
@@ -301,6 +321,17 @@
                     <span class="value-display" id="rayCountValue">50</span>
                 </div>
                 <div class="slider-description">More rays = clearer physics demonstration</div>
+            </div>
+            
+            <div class="control-group">
+                <label for="showProjectionImage">
+                    <span class="control-icon">🖼️</span>
+                    Show Projection Image
+                </label>
+                <div class="checkbox-container">
+                    <input type="checkbox" id="showProjectionImage">
+                    <span class="checkbox-description">Toggle background image in projection panel</span>
+                </div>
             </div>
         </div>
         
