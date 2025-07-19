@@ -48,3 +48,7 @@ The simulation uses Vincent van Gogh's self-portrait as the source image to demo
 - Responsive design that works on different screen sizes
 
 Perfect for educational purposes, physics demonstrations, or anyone curious about camera optics!
+
+## Credits
+
+This code was entirely written by **Claude Code** (Anthropic's AI coding assistant), with help and inspiration from [qemqemqem](https://github.com/qemqemqem).
