@@ -14,6 +14,7 @@ class PinholeCamera {
         
         this.pinholeSize = 3;
         this.rayCount = 50;
+        this.imageData = null; // Store image data for color sampling
         
         this.setupControls();
         this.loadSourceImage();
@@ -121,6 +122,10 @@ class PinholeCamera {
             const y = (canvas.height - height) / 2;
             
             ctx.drawImage(this.sourceImage, x, y, width, height);
+            
+            // Store image data for color sampling
+            this.imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            this.imageRect = { x, y, width, height };
             
             // Add grid points to show ray origins
             this.drawRayOriginPoints(ctx, x, y, width, height);
@@ -298,7 +303,21 @@ class PinholeCamera {
         this.drawRaysOverlay();
     }
     
+    getPixelColor(x, y) {
+        if (!this.imageData) return 'rgba(255, 255, 255, 0.7)';
+        
+        const index = (Math.floor(y) * this.imageData.width + Math.floor(x)) * 4;
+        const r = this.imageData.data[index];
+        const g = this.imageData.data[index + 1];
+        const b = this.imageData.data[index + 2];
+        const a = this.imageData.data[index + 3] / 255;
+        
+        return `rgba(${r}, ${g}, ${b}, ${Math.min(a * 0.8, 0.8)})`;
+    }
+    
     drawRaysOverlay() {
+        if (!this.imageData || !this.imageRect) return;
+        
         // Remove existing overlay
         const existingOverlay = document.querySelector('.ray-overlay');
         if (existingOverlay) {
@@ -343,60 +362,62 @@ class PinholeCamera {
         const projectionX = projectionRect.left - containerRect.left;
         const projectionY = projectionRect.top - containerRect.top;
         
-        // Draw rays with different colors and improved visibility
-        const colors = [
-            'rgba(255, 0, 0, 0.7)',    // Red
-            'rgba(0, 150, 255, 0.7)',  // Blue
-            'rgba(255, 165, 0, 0.7)',  // Orange
-            'rgba(0, 255, 0, 0.7)',    // Green
-            'rgba(255, 0, 255, 0.7)'   // Magenta
-        ];
-        
+        // Draw light cones with colors sampled from the image
         for (let i = 0; i < this.rayCount; i++) {
-            // Use different colors to make rays more distinct
-            ctx.strokeStyle = colors[i % colors.length];
-            ctx.lineWidth = i < 10 ? 2 : 1; // Make first 10 rays thicker
-            
             // Random point on source image
-            const startX = sourceX + Math.random() * sourceCanvas.width;
-            const startY = sourceY + Math.random() * sourceCanvas.height;
+            const startX = sourceX + this.imageRect.x + Math.random() * this.imageRect.width;
+            const startY = sourceY + this.imageRect.y + Math.random() * this.imageRect.height;
             
-            // Through pinhole with slight randomness based on aperture size
-            const middleX = pinholeX;
-            const middleY = pinholeY + (Math.random() - 0.5) * this.pinholeSize;
+            // Sample color from the image at this point
+            const color = this.getPixelColor(startX - sourceX, startY - sourceY);
             
-            // Calculate direction and extend to projection
-            const direction = {
-                x: middleX - startX,
-                y: middleY - startY
-            };
+            // Create light cone through pinhole
+            const coneAngle = this.pinholeSize / 100; // Cone spread based on pinhole size
+            const numConeRays = 5; // Number of rays per cone
             
-            const distance = (projectionX + projectionCanvas.width / 2) - middleX;
-            const slope = direction.y / direction.x;
-            const endX = middleX + distance;
-            const endY = middleY + slope * distance;
-            
-            // Draw ray with gradient for better visibility
-            const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
-            gradient.addColorStop(0, ctx.strokeStyle);
-            gradient.addColorStop(0.5, ctx.strokeStyle.replace('0.7', '0.9'));
-            gradient.addColorStop(1, ctx.strokeStyle.replace('0.7', '0.5'));
-            
-            ctx.strokeStyle = gradient;
-            
-            ctx.beginPath();
-            ctx.moveTo(startX, startY);
-            ctx.lineTo(middleX, middleY);
-            ctx.lineTo(endX, endY);
-            ctx.stroke();
-            
-            // Add small circle at source point for first few rays
-            if (i < 5) {
-                ctx.fillStyle = colors[i % colors.length].replace('0.7', '1.0');
+            for (let j = 0; j < numConeRays; j++) {
+                const angleOffset = (j - numConeRays/2) * coneAngle;
+                
+                // Through pinhole with cone spread
+                const middleX = pinholeX + angleOffset * 20;
+                const middleY = pinholeY + (Math.random() - 0.5) * this.pinholeSize;
+                
+                // Calculate direction and extend to projection
+                const direction = {
+                    x: middleX - startX,
+                    y: middleY - startY
+                };
+                
+                const distance = (projectionX + projectionCanvas.width / 2) - middleX;
+                const slope = direction.y / direction.x;
+                const endX = middleX + distance;
+                const endY = middleY + slope * distance;
+                
+                // Draw cone ray with sampled color
+                ctx.strokeStyle = color;
+                ctx.lineWidth = j === Math.floor(numConeRays/2) ? 2 : 1;
+                
                 ctx.beginPath();
-                ctx.arc(startX, startY, 3, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(middleX, middleY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+                
+                // Draw projection circle (2D, not 1D line)
+                if (j === Math.floor(numConeRays/2)) { // Only for center ray
+                    const circleRadius = this.pinholeSize * 2;
+                    ctx.fillStyle = color.replace(/[\d\.]+\)$/g, '0.3)');
+                    ctx.beginPath();
+                    ctx.arc(endX, endY, circleRadius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             }
+            
+            // Draw source point with sampled color
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(startX, startY, 2, 0, Math.PI * 2);
+            ctx.fill();
         }
     }
 }
