@@ -39,7 +39,65 @@ class PinholeCamera {
     }
     
     loadSourceImage() {
-        this.sourceImage.src = 'https://images.fineartamerica.com/images/artworkimages/mediumlarge/3/self-portrait-i-by-vincent-van-gogh-1887-m-g-whittingham.jpg';
+        // Try multiple Van Gogh sources with fallback
+        const sources = [
+            'https://upload.wikimedia.org/wikipedia/commons/b/b2/Vincent_van_Gogh_-_Self-Portrait_-_Google_Art_Project.jpg',
+            'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=400',
+            'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300"><rect width="300" height="300" fill="%23f0e68c"/><circle cx="150" cy="120" r="40" fill="%23daa520"/><circle cx="130" cy="110" r="5" fill="%23000"/><circle cx="170" cy="110" r="5" fill="%23000"/><path d="M140 140 Q150 150 160 140" stroke="%23000" stroke-width="2" fill="none"/><text x="150" y="200" text-anchor="middle" font-family="serif" font-size="16" fill="%238b4513">Van Gogh Portrait</text></svg>'
+        ];
+        
+        this.tryLoadImage(sources, 0);
+    }
+    
+    tryLoadImage(sources, index) {
+        if (index >= sources.length) {
+            this.createFallbackImage();
+            return;
+        }
+        
+        this.sourceImage.onload = () => this.render();
+        this.sourceImage.onerror = () => this.tryLoadImage(sources, index + 1);
+        this.sourceImage.src = sources[index];
+    }
+    
+    createFallbackImage() {
+        // Create a canvas-based fallback image
+        const canvas = document.createElement('canvas');
+        canvas.width = 300;
+        canvas.height = 300;
+        const ctx = canvas.getContext('2d');
+        
+        // Draw a simple portrait
+        ctx.fillStyle = '#f0e68c';
+        ctx.fillRect(0, 0, 300, 300);
+        
+        // Face
+        ctx.fillStyle = '#daa520';
+        ctx.beginPath();
+        ctx.arc(150, 120, 40, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Eyes
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(130, 110, 5, 0, Math.PI * 2);
+        ctx.arc(170, 110, 5, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Mouth
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(150, 140, 15, 0, Math.PI);
+        ctx.stroke();
+        
+        // Label
+        ctx.fillStyle = '#8b4513';
+        ctx.font = '16px serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Van Gogh Portrait', 150, 200);
+        
+        this.sourceImage.src = canvas.toDataURL();
     }
     
     render() {
@@ -55,14 +113,40 @@ class PinholeCamera {
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        if (this.sourceImage.complete) {
-            const scale = Math.min(canvas.width / this.sourceImage.width, canvas.height / this.sourceImage.height);
+        if (this.sourceImage.complete && this.sourceImage.width > 0) {
+            const scale = Math.min(canvas.width / this.sourceImage.width, canvas.height / this.sourceImage.height) * 0.9;
             const width = this.sourceImage.width * scale;
             const height = this.sourceImage.height * scale;
             const x = (canvas.width - width) / 2;
             const y = (canvas.height - height) / 2;
             
             ctx.drawImage(this.sourceImage, x, y, width, height);
+            
+            // Add grid points to show ray origins
+            this.drawRayOriginPoints(ctx, x, y, width, height);
+        } else {
+            // Show loading message
+            ctx.fillStyle = '#666';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Loading image...', canvas.width / 2, canvas.height / 2);
+        }
+    }
+    
+    drawRayOriginPoints(ctx, imgX, imgY, imgWidth, imgHeight) {
+        const gridSize = Math.min(imgWidth, imgHeight) / 8;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.lineWidth = 1;
+        
+        for (let i = 0; i < this.rayCount && i < 20; i++) {
+            const x = imgX + Math.random() * imgWidth;
+            const y = imgY + Math.random() * imgHeight;
+            
+            ctx.beginPath();
+            ctx.arc(x, y, 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
         }
     }
     
@@ -72,30 +156,44 @@ class PinholeCamera {
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Draw the pinhole aperture
         const centerX = canvas.width / 2;
         const centerY = canvas.height / 2;
+        const apertureHeight = this.pinholeSize;
         
-        // Draw the barrier (dark areas above and below pinhole)
-        ctx.fillStyle = '#333';
-        ctx.fillRect(0, 0, canvas.width, centerY - this.pinholeSize / 2);
-        ctx.fillRect(0, centerY + this.pinholeSize / 2, canvas.width, centerY - this.pinholeSize / 2);
+        // Draw the camera body/barrier with gradient
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+        gradient.addColorStop(0, '#222');
+        gradient.addColorStop(0.5, '#444');
+        gradient.addColorStop(1, '#222');
         
-        // Draw the pinhole opening
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(0, centerY - this.pinholeSize / 2, canvas.width, this.pinholeSize);
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, centerY - apertureHeight / 2);
+        ctx.fillRect(0, centerY + apertureHeight / 2, canvas.width, centerY - apertureHeight / 2);
         
-        // Add some visual elements to show it's a pinhole
+        // Draw metallic edge details
         ctx.strokeStyle = '#666';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(centerX - 20, centerY - this.pinholeSize / 2);
-        ctx.lineTo(centerX + 20, centerY - this.pinholeSize / 2);
-        ctx.moveTo(centerX - 20, centerY + this.pinholeSize / 2);
-        ctx.lineTo(centerX + 20, centerY + this.pinholeSize / 2);
+        ctx.moveTo(0, centerY - apertureHeight / 2);
+        ctx.lineTo(canvas.width, centerY - apertureHeight / 2);
+        ctx.moveTo(0, centerY + apertureHeight / 2);
+        ctx.lineTo(canvas.width, centerY + apertureHeight / 2);
         ctx.stroke();
-        ctx.setLineDash([]);
+        
+        // Draw the bright pinhole opening with inner glow
+        const openingGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, apertureHeight);
+        openingGradient.addColorStop(0, '#fff');
+        openingGradient.addColorStop(0.7, '#f0f0f0');
+        openingGradient.addColorStop(1, '#ddd');
+        
+        ctx.fillStyle = openingGradient;
+        ctx.fillRect(0, centerY - apertureHeight / 2, canvas.width, apertureHeight);
+        
+        // Add aperture size indicator
+        ctx.fillStyle = '#999';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Ø ${this.pinholeSize.toFixed(1)}`, centerX, centerY + apertureHeight + 15);
     }
     
     renderProjection() {
@@ -104,7 +202,7 @@ class PinholeCamera {
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        if (this.sourceImage.complete) {
+        if (this.sourceImage.complete && this.sourceImage.width > 0) {
             // Draw the inverted image
             const scale = Math.min(canvas.width / this.sourceImage.width, canvas.height / this.sourceImage.height) * 0.8;
             const width = this.sourceImage.width * scale;
@@ -112,22 +210,48 @@ class PinholeCamera {
             const x = (canvas.width - width) / 2;
             const y = (canvas.height - height) / 2;
             
+            // Add a subtle background to show the projection screen
+            ctx.fillStyle = '#f8f8f8';
+            ctx.fillRect(x - 10, y - 10, width + 20, height + 20);
+            ctx.strokeStyle = '#ddd';
+            ctx.strokeRect(x - 10, y - 10, width + 20, height + 20);
+            
             ctx.save();
             ctx.translate(canvas.width / 2, canvas.height / 2);
             ctx.scale(-1, -1); // Flip both horizontally and vertically
+            
+            // Apply slight blur based on pinhole size
+            if (this.pinholeSize > 5) {
+                ctx.filter = `blur(${(this.pinholeSize - 5) * 0.5}px)`;
+            }
+            
             ctx.drawImage(this.sourceImage, -width/2, -height/2, width, height);
             ctx.restore();
             
             // Add blur circles based on pinhole size
             this.renderBlurCircles(canvas, ctx, x, y, width, height);
+            
+            // Add label
+            ctx.fillStyle = '#666';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Inverted & Flipped', canvas.width / 2, y + height + 30);
+        } else {
+            ctx.fillStyle = '#666';
+            ctx.font = '16px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Projection will appear here', canvas.width / 2, canvas.height / 2);
         }
     }
     
     renderBlurCircles(canvas, ctx, imageX, imageY, imageWidth, imageHeight) {
-        const blurRadius = this.pinholeSize * 2;
-        const circleCount = Math.min(this.rayCount / 5, 20);
+        if (this.pinholeSize <= 3) return; // Don't show blur for small pinholes
         
-        ctx.strokeStyle = `rgba(255, 100, 100, ${0.3 / Math.sqrt(this.pinholeSize)})`;
+        const blurRadius = (this.pinholeSize - 3) * 3;
+        const circleCount = Math.min(this.rayCount / 10, 15);
+        const alpha = Math.max(0.1, 0.4 / this.pinholeSize);
+        
+        ctx.strokeStyle = `rgba(255, 100, 100, ${alpha})`;
         ctx.lineWidth = 1;
         
         for (let i = 0; i < circleCount; i++) {
@@ -202,37 +326,60 @@ class PinholeCamera {
         const projectionX = projectionRect.left - containerRect.left;
         const projectionY = projectionRect.top - containerRect.top;
         
-        // Draw rays
-        ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
-        ctx.lineWidth = 1;
+        // Draw rays with different colors and improved visibility
+        const colors = [
+            'rgba(255, 0, 0, 0.7)',    // Red
+            'rgba(0, 150, 255, 0.7)',  // Blue
+            'rgba(255, 165, 0, 0.7)',  // Orange
+            'rgba(0, 255, 0, 0.7)',    // Green
+            'rgba(255, 0, 255, 0.7)'   // Magenta
+        ];
         
         for (let i = 0; i < this.rayCount; i++) {
+            // Use different colors to make rays more distinct
+            ctx.strokeStyle = colors[i % colors.length];
+            ctx.lineWidth = i < 10 ? 2 : 1; // Make first 10 rays thicker
+            
             // Random point on source image
             const startX = sourceX + Math.random() * sourceCanvas.width;
             const startY = sourceY + Math.random() * sourceCanvas.height;
             
-            // Through pinhole
+            // Through pinhole with slight randomness based on aperture size
             const middleX = pinholeX;
             const middleY = pinholeY + (Math.random() - 0.5) * this.pinholeSize;
             
-            // To projection (calculate where the ray would hit)
+            // Calculate direction and extend to projection
             const direction = {
                 x: middleX - startX,
                 y: middleY - startY
             };
             
-            // Extend the ray to the projection surface
             const distance = (projectionX + projectionCanvas.width / 2) - middleX;
             const slope = direction.y / direction.x;
             const endX = middleX + distance;
             const endY = middleY + slope * distance;
             
-            // Draw the ray
+            // Draw ray with gradient for better visibility
+            const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
+            gradient.addColorStop(0, ctx.strokeStyle);
+            gradient.addColorStop(0.5, ctx.strokeStyle.replace('0.7', '0.9'));
+            gradient.addColorStop(1, ctx.strokeStyle.replace('0.7', '0.5'));
+            
+            ctx.strokeStyle = gradient;
+            
             ctx.beginPath();
             ctx.moveTo(startX, startY);
             ctx.lineTo(middleX, middleY);
             ctx.lineTo(endX, endY);
             ctx.stroke();
+            
+            // Add small circle at source point for first few rays
+            if (i < 5) {
+                ctx.fillStyle = colors[i % colors.length].replace('0.7', '1.0');
+                ctx.beginPath();
+                ctx.arc(startX, startY, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
     }
 }
