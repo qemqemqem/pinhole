@@ -1,13 +1,18 @@
 # Pinhole Camera Simulation
 
-An interactive demonstration of pinhole camera optics using HTML5 Canvas and JavaScript.
+**🔬 [Try the Interactive Simulation](https://qemqemqem.github.io/pinhole/) 🔬**
+
+An interactive demonstration of pinhole camera optics using HTML5 Canvas and JavaScript with scientifically accurate ray tracing and quasirandom point sampling.
 
 ## Features
 
-- **Interactive Pinhole Size**: Adjust the aperture size to see how it affects image sharpness and brightness
-- **Ray Visualization**: Control the number of light rays to understand the physics
-- **Real Image Inversion**: See how light travels in straight lines through the pinhole to create an inverted image
-- **Blur Visualization**: Circles show the blur effect caused by larger pinhole sizes
+- **🎚️ Interactive Controls**: Adjust pinhole size (1-20) and ray count (10-1000) with smooth sliders
+- **🌈 Colorful Ray Tracing**: See actual colors from source image propagate through light rays
+- **🎲 Quasirandom Sampling**: Uses Halton sequences for optimal ray distribution (no clustering)
+- **👻 Transparent Rays**: Subtle ray lines with opaque endpoints show image formation clearly
+- **🖼️ Projection Toggle**: Hide/show background image to see rays forming the projection
+- **📐 Educational Mapping**: X-direct, Y-inverted rays for clear physics demonstration
+- **🔍 Precise Pinhole**: Thin aperture with horizontal edge bars for clear visualization
 
 ## How It Works
 
