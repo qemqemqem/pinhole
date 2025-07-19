@@ -35,33 +35,17 @@ class PinholeCamera {
             }, 100);
         };
         
-        // Enhanced pinhole slider with visual feedback
+        // Enhanced pinhole slider with clean feedback
         pinholeSlider.addEventListener('input', (e) => {
             this.pinholeSize = parseFloat(e.target.value);
             animateValueUpdate(pinholeSizeValue, this.pinholeSize.toFixed(1));
-            
-            // Update slider background based on value for visual feedback
-            const percentage = ((this.pinholeSize - 1) / (20 - 1)) * 100;
-            pinholeSlider.style.background = `linear-gradient(90deg, 
-                #ff6b6b 0%, 
-                #feca57 ${percentage}%, 
-                #48dbfb 100%)`;
-            
             this.render();
         });
         
-        // Enhanced ray slider with visual feedback
+        // Enhanced ray slider with clean feedback
         raySlider.addEventListener('input', (e) => {
             this.rayCount = parseInt(e.target.value);
             animateValueUpdate(rayCountValue, this.rayCount);
-            
-            // Update slider background based on value
-            const percentage = ((this.rayCount - 10) / (200 - 10)) * 100;
-            raySlider.style.background = `linear-gradient(90deg, 
-                #a8edea 0%, 
-                #fed6e3 ${percentage}%, 
-                #d299c2 100%)`;
-            
             this.render();
         });
         
@@ -80,18 +64,9 @@ class PinholeCamera {
             });
         });
         
-        // Initialize slider backgrounds
-        const pinholePercentage = ((this.pinholeSize - 1) / (20 - 1)) * 100;
-        pinholeSlider.style.background = `linear-gradient(90deg, 
-            #ff6b6b 0%, 
-            #feca57 ${pinholePercentage}%, 
-            #48dbfb 100%)`;
-            
-        const rayPercentage = ((this.rayCount - 10) / (200 - 10)) * 100;
-        raySlider.style.background = `linear-gradient(90deg, 
-            #a8edea 0%, 
-            #fed6e3 ${rayPercentage}%, 
-            #d299c2 100%)`;
+        // Initialize clean slider styling
+        pinholeSlider.style.background = '#dee2e6';
+        raySlider.style.background = '#dee2e6';
     }
     
     loadSourceImage() {
@@ -437,16 +412,22 @@ class PinholeCamera {
                 const middleX = pinholeX + angleOffset * 20;
                 const middleY = pinholeY + (Math.random() - 0.5) * this.pinholeSize;
                 
-                // Calculate where ray intersects projection plane (inside the canvas)
-                const projectionPlaneX = projectionX + projectionCanvas.width * 0.75;
+                // Calculate ray continuation - rays should spread naturally across projection area
+                // Ray direction from source through pinhole
+                const rayDirX = middleX - startX;
+                const rayDirY = middleY - startY;
                 
-                // Ray equation: point = start + t * (middle - start)
-                // When ray hits projection plane at x = projectionPlaneX:
-                const t = (projectionPlaneX - startX) / (middleX - startX);
+                // Extend ray beyond pinhole by a fixed distance for visualization
+                // This allows rays to naturally spread based on their different angles
+                const extensionFactor = 1.5; // How far past pinhole to extend
+                const distancePastPinhole = Math.abs(projectionX - middleX) * extensionFactor;
                 
-                // Calculate intersection point on projection plane
-                const endX = projectionPlaneX;
-                const endY = startY + t * (middleY - startY);
+                // Calculate final position by extending ray past pinhole
+                const normalizedDirX = rayDirX / Math.sqrt(rayDirX*rayDirX + rayDirY*rayDirY);
+                const normalizedDirY = rayDirY / Math.sqrt(rayDirX*rayDirX + rayDirY*rayDirY);
+                
+                const finalEndX = middleX + normalizedDirX * distancePastPinhole;
+                const finalEndY = middleY + normalizedDirY * distancePastPinhole;
                 
                 // Draw cone ray with sampled color
                 ctx.strokeStyle = color;
@@ -455,7 +436,7 @@ class PinholeCamera {
                 ctx.beginPath();
                 ctx.moveTo(startX, startY);
                 ctx.lineTo(middleX, middleY);
-                ctx.lineTo(endX, endY);
+                ctx.lineTo(finalEndX, finalEndY);
                 ctx.stroke();
                 
                 // Draw projection circle (2D, not 1D line)
@@ -463,7 +444,7 @@ class PinholeCamera {
                     const circleRadius = this.pinholeSize * 2;
                     ctx.fillStyle = color.replace(/[\d\.]+\)$/g, '0.3)');
                     ctx.beginPath();
-                    ctx.arc(endX, endY, circleRadius, 0, Math.PI * 2);
+                    ctx.arc(finalEndX, finalEndY, circleRadius, 0, Math.PI * 2);
                     ctx.fill();
                 }
             }
