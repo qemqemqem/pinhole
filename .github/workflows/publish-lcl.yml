@@ -1,0 +1,25 @@
+# Publishes to https://limitcycle.ai/pinhole/. Template: limitcyclelabs/templates/github-workflows/publish-static.yml
+name: Publish to Limit Cycle Labs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # LCL_SSH_KEY comes from `project.py key pinhole` on the server. It can only
+      # write into /srv/lcl/sites/pinhole/, so the destination is just "host:".
+      - name: Copy files to the server
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.LCL_SSH_KEY }}" > ~/.ssh/lcl_deploy
+          chmod 600 ~/.ssh/lcl_deploy
+          ssh-keyscan -H "${{ secrets.LCL_HOST }}" >> ~/.ssh/known_hosts
+          rsync -az --delete -e "ssh -i $HOME/.ssh/lcl_deploy -o IdentitiesOnly=yes" \
+            --exclude '.git*' --exclude 'screenshots/' \
+            ./ "deploy@${{ secrets.LCL_HOST }}:"
